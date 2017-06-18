@@ -10,8 +10,7 @@ from datetime import datetime
 
 #######GLOBALS########################################################################
 FROM = "ampergold@starelamy.org"
-TO = ["oporanski@gmail.com", "marcin.opinc@gmail.com"]
-#TO = ["oporanski@gmail.com"]
+TO = ("oporanski@gmail.com", "marcin.opinc@gmail.com")
 SUBJECT = "Average number of users Poloniex"
 SERVER = "localhost"
 DEBUG = True
@@ -19,39 +18,6 @@ DEBUG = True
 ######################################################################################
 
 #######FUNCTIONS##########
-def get_market(sqlq):
-    conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
-    x = conn.cursor()
-    try:
-	x.execute(sqlq)
-	rows = x.fetchall()
-    except:
-	conn.rollback()
-    ret = []
-    for row in rows:
-	ret = row
-    conn.close()
-    return ret
-
-
-def get_average_last_hour(sqlq):
-    conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
-    #log(sqlq)
-    x = conn.cursor()
-    try:
-	x.execute(sqlq)
-	rows = x.fetchall()
-    except:
-	conn.rollback()
-    #log("Number of records: " + str(len(rows)))
-    avg_users = 0
-    for row in rows:
-	#log("Value:" + row[0])
-	avg_users += int(row[0])
-    avg_users = avg_users/len(rows)
-    #log ("AVG:" + str(avg_users))
-    conn.close()
-    return avg_users
 
 def get_average_last_hour(sqlq):
     conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
@@ -133,42 +99,20 @@ d_cs = str("%.2f" % round(d_c,2))
 log("Houerly[%]: " + h_cs)
 log("Daily[%]: " + d_cs)
 
-
 #Create the body of the message (a plain-text and an HTML version).
 TEXT = "Poloniex Users:\n Last Hour:" + ahu + \
     "\n Last day:" + adu + \
     "\n 2 days ago:" + a2du + \
     "\nChanges in number of users on Poloniex\n Houerly[%]: "+ h_cs+" \n Daily[%]: " + d_cs
 
-HTML = "<html><head><style>table {border-collapse: collapse;} table, th, td {border: 1px solid black;}</style></head><body><p>Poloniex Users:<br>" + \
+HTML = "<html><head></head><body><p>Poloniex Users:<br>" + \
     "<ul> <li>Last Hour:" + ahu + \
     "</li><li> Last day:" + adu + \
     "</li><li> 2 days ago:" + a2du + \
     "</li></ul></p>" + \
     "<p>Changes in number of users on Poloniex:<br><ul>" + \
     "<li>Houerly[%]: "+ h_cs+"</li><li> Daily[%]: " + d_cs + \
-    "</li></ul></p>"
-
-HTML += """<p>Poloniex Markets:<br>
-            <table border="1" cellpadding="4"><tr>
-            <td>Market</td>
-            <td>Last Price</td>
-            <td>Percent Change</td>
-            <td>Base Volume</td>
-            <td>Quote Volume</td>"""
-TEXT = "Poloniex Markets:\n Market, \tLast, \tPrice, \tPercent Change, \tBase Volume, \tQuote Volume\n"
-
-markets = ["USDT_BTC", "BTC_PASC", "BTC_XMR", "BTC_ETH", "BTC_ETC", "BTC_LTC", "BTC_DASH"]
-for market in markets: 
-    sql_query = "SELECT Last, PercentChange, BaseVolume, QuoteVolume FROM " + market + " ORDER BY id DESC LIMIT 1"
-    res = get_market(sql_query)
-    TEXT += market + ": \t" + '{0:.6f}'.format(res[0]) + ", \t" + '{0:.2f}'.format(res[1]) + ", \t" \
-         + '{0:.2f}'.format(res[2]) + ", \t" + '{0:.2f}'.format(res[3]) + "\n"
-    HTML += "<tr><td>" + market + "</td><td>" + '{0:.6f}'.format(res[0]) + "</td><td>" + '{0:.2f}'.format(res[1]) \
-         + "</td><td>" + '{0:.2f}'.format(res[2]) + "</td><td>" + '{0:.2f}'.format(res[3]) + "</td></tr>"
-
-HTML += "</table>"
-HTML += "</p></body></html>"
+    "</li></ul></p></body></html>"
 
 #log(TEXT)
 #log(HTML)

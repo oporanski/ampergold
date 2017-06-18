@@ -37,9 +37,14 @@ log("**********************************************************")
 
 url = "https://api.coinmarketcap.com/v1/ticker/"
 data = json.load(urllib2.urlopen(url))
+#data.sort(key=market_cap_usd, reverse=True)
+#print(len(data))
+
 print(str(data[0]["id"]))
-print("\n")
-print("one entry:" + str(data[0]))
+for i in range(0,len(data)):
+    print("coin:" + str(data[i]["id"]))
+
+print(data[0])
 
 #for market in markets: 
 #    data = ticker[market]
