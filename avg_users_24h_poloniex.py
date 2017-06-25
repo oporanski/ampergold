@@ -3,6 +3,7 @@ import datetime
 import requests
 import MySQLdb
 import smtplib
+import operator
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,8 +11,8 @@ from datetime import datetime
 
 #######GLOBALS########################################################################
 FROM = "ampergold@starelamy.org"
-TO = ["oporanski@gmail.com", "marcin.opinc@gmail.com"]
-#TO = ["oporanski@gmail.com"]
+#TO = ["oporanski@gmail.com", "marcin.opinc@gmail.com"]
+TO = ["oporanski@gmail.com"]
 SUBJECT = "Average number of users Poloniex"
 SERVER = "localhost"
 DEBUG = True
@@ -21,12 +22,14 @@ DEBUG = True
 #######FUNCTIONS##########
 def get_market(sqlq):
     conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
+    #log(sqlq)
     x = conn.cursor()
     try:
 	x.execute(sqlq)
 	rows = x.fetchall()
     except:
 	conn.rollback()
+    #log("Number of records: " + str(len(rows)))
     ret = []
     for row in rows:
 	ret = row
@@ -74,7 +77,7 @@ def get_average_last_hour(sqlq):
 
 
 #######HELPERS##########
-def sendMail(FROM,TO,SUBJECT,TEXT,HTML,SERVER):
+def sendMail(FROM,TO,SUBJECT,HTML,SERVER):
     """Function sending email Input: FROM,TO,SUBJECT,TEXT,HTML,SERVER"""
     #write_date_of_last_notyfication(notyfiType)
     COMMASPACE = ', '
@@ -82,14 +85,8 @@ def sendMail(FROM,TO,SUBJECT,TEXT,HTML,SERVER):
     msg['Subject'] = SUBJECT
     msg['From'] = FROM
     msg['To'] = COMMASPACE.join(TO)
-    # Record the MIME types of both parts - text/plain and text/html.
-    part1 = MIMEText(TEXT, 'plain')
-    part2 = MIMEText(HTML, 'html')
-    # Attach parts into message container.
-    # According to RFC 2046, the last part of a multipart message, in this case
-    # the HTML message, is best and preferred.
+    part1 = MIMEText(HTML, 'html')
     msg.attach(part1)
-    msg.attach(part2)
     # Send the email via our own SMTP server.
     s = smtplib.SMTP(SERVER)
     s.sendmail(FROM, TO, msg.as_string())
@@ -135,20 +132,63 @@ log("Daily[%]: " + d_cs)
 
 
 #Create the body of the message (a plain-text and an HTML version).
-TEXT = "Poloniex Users:\n Last Hour:" + ahu + \
-    "\n Last day:" + adu + \
-    "\n 2 days ago:" + a2du + \
-    "\nChanges in number of users on Poloniex\n Houerly[%]: "+ h_cs+" \n Daily[%]: " + d_cs
+#TEXT = "Poloniex Users:\n Last Hour:" + ahu + \
+#    "\n Last day:" + adu + \
+#    "\n 2 days ago:" + a2du + \
+#    "\nChanges in number of users on Poloniex\n Houerly[%]: "+ h_cs+" \n Daily[%]: " + d_cs
 
-HTML = "<html><head><style>table {border-collapse: collapse;} table, th, td {border: 1px solid black;}</style></head><body><p>Poloniex Users:<br>" + \
-    "<ul> <li>Last Hour:" + ahu + \
-    "</li><li> Last day:" + adu + \
-    "</li><li> 2 days ago:" + a2du + \
-    "</li></ul></p>" + \
-    "<p>Changes in number of users on Poloniex:<br><ul>" + \
-    "<li>Houerly[%]: "+ h_cs+"</li><li> Daily[%]: " + d_cs + \
-    "</li></ul></p>"
+HTML = "<html><head><style>table {border-collapse: collapse;} table, th, td {border: 1px solid black;}</style></head><body>" + \
+       "<p>Changes in number of users on Poloniex:<br><ul>" + \
+       "<li>Houerly[%]: "+ h_cs+"</li><li> Daily[%]: " + d_cs + \
+       "</li></ul></p>"
 
+###############################################################
+#TOP RISE and DROPS
+markets = ["USDT_REP", "BTC_XVC", "BTC_PINK", "BTC_SYS", "BTC_EMC2", "BTC_RADS", "BTC_SC", "BTC_MAID", \
+        "BTC_GNT", "BTC_BCN", "BTC_REP", "BTC_BCY", "BTC_GNO", "XMR_NXT", "USDT_ZEC", "BTC_FCT", "USDT_ETH", \
+        "USDT_BTC", "BTC_LBC", "BTC_DCR", "USDT_ETC", "BTC_AMP", "BTC_XPM", "BTC_NXT", "BTC_VTC", "ETH_STEEM", \
+        "XMR_BLK", "BTC_PASC", "XMR_ZEC", "BTC_GRC", "BTC_NXC", "BTC_BTCD", "BTC_LTC", "BTC_DASH", "BTC_NAUT", \
+        "ETH_ZEC", "BTC_ZEC", "BTC_BURST", "BTC_BELA", "BTC_STEEM", "BTC_ETC", "BTC_ETH", "BTC_HUC", "BTC_STRAT", \
+        "BTC_LSK", "BTC_EXP", "BTC_CLAM", "ETH_REP", "XMR_DASH", "USDT_DASH", "BTC_BLK", "BTC_XRP", "USDT_NXT", \
+        "BTC_NEOS", "BTC_BTS", "BTC_DOGE", "ETH_GNT", "BTC_SBD", "ETH_GNO", "BTC_XCP", "USDT_LTC", "BTC_BTM", \
+        "USDT_XMR", "ETH_LSK", "BTC_OMNI", "BTC_NAV", "BTC_FLDC", "BTC_XBC", "BTC_DGB", "BTC_NOTE", "XMR_BTCD", \
+        "BTC_VRC", "BTC_RIC", "XMR_MAID", "BTC_STR", "BTC_POT", "BTC_XMR", "BTC_SJCX", "BTC_VIA", "BTC_XEM", \
+        "BTC_NMC", "ETH_ETC", "XMR_LTC", "BTC_ARDR", "BTC_FLO", "USDT_XRP", "BTC_GAME", "BTC_PPC", "XMR_BCN", "USDT_STR"]
+
+res = {}
+for market in markets: 
+    sql_query = "SELECT Last, BaseVolume, QuoteVolume FROM " + market + " ORDER BY id DESC LIMIT 1"
+    data_now = get_market(sql_query)
+    sql_query = "SELECT Last, BaseVolume, QuoteVolume FROM " + market + " WHERE TimeStamp >= NOW() - INTERVAL 1 DAY ORDER BY id ASC LIMIT 1"
+    data_24h = get_market(sql_query)
+    delta_price = (data_now[0] - data_24h[0])/data_now[0]*100
+    delta_base_volume = (data_now[1] - data_24h[1])/data_now[1]*100
+    delta_quote_volume = (data_now[2] - data_24h[2])/data_now[0]*100
+    #res[market] = [delta_price, delta_base_volume, delta_quote_volume]
+    res[market] = delta_price
+
+tops = dict(sorted(res.iteritems(), key=operator.itemgetter(1), reverse=True)[:5])
+drops = dict(sorted(res.iteritems(), key=operator.itemgetter(1), reverse=False)[:5])
+
+HTML += "<p>Poloniex TOP 5 Markets:<br><ul>"
+#for m in sorted(tops, key=tops.get, reverse=True):
+#    print m + ": " + str(tops[m])
+
+for m in sorted(tops, key=tops.get, reverse=True):
+    HTML += "<li>" + m + ": " + '{0:.2f}'.format(tops[m]) + "</li>"
+
+HTML += "</ul></p><p>Poloniex TOP 5 Drops:<br><ul>"
+
+for m in sorted(drops, key=drops.get, reverse=True):
+    HTML += "<li>" + m + ": " + '{0:.2f}'.format(drops[m]) + "</li>"
+
+HTML +="</ul></p>"
+#log('Delta last 24 hour '+ market + ": "+ str(delta_price))
+#print(tops)
+#print(drops)
+
+###############################################################
+#MARKETS
 HTML += """<p>Poloniex Markets:<br>
             <table border="1" cellpadding="4"><tr>
             <td>Market</td>
@@ -156,21 +196,23 @@ HTML += """<p>Poloniex Markets:<br>
             <td>Percent Change</td>
             <td>Base Volume</td>
             <td>Quote Volume</td>"""
-TEXT = "Poloniex Markets:\n Market, \tLast, \tPrice, \tPercent Change, \tBase Volume, \tQuote Volume\n"
+#TEXT = "Poloniex Markets:\n Market, \tLast, \tPrice, \tPercent Change, \tBase Volume, \tQuote Volume\n"
 
-markets = ["USDT_BTC", "BTC_PASC", "BTC_XMR", "BTC_ETH", "BTC_ETC", "BTC_LTC", "BTC_DASH"]
+markets = ["USDT_BTC", "BTC_PASC", "BTC_XMR", "BTC_ETH", "BTC_ETC", "BTC_VTC", "BTC_LTC", "BTC_DASH"]
 for market in markets: 
     sql_query = "SELECT Last, PercentChange, BaseVolume, QuoteVolume FROM " + market + " ORDER BY id DESC LIMIT 1"
     res = get_market(sql_query)
-    TEXT += market + ": \t" + '{0:.6f}'.format(res[0]) + ", \t" + '{0:.2f}'.format(res[1]) + ", \t" \
-         + '{0:.2f}'.format(res[2]) + ", \t" + '{0:.2f}'.format(res[3]) + "\n"
+    #TEXT += market + ": \t" + '{0:.6f}'.format(res[0]) + ", \t" + '{0:.2f}'.format(res[1]) + ", \t" \
+    #     + '{0:.2f}'.format(res[2]) + ", \t" + '{0:.2f}'.format(res[3]) + "\n"
     HTML += "<tr><td>" + market + "</td><td>" + '{0:.6f}'.format(res[0]) + "</td><td>" + '{0:.2f}'.format(res[1]) \
          + "</td><td>" + '{0:.2f}'.format(res[2]) + "</td><td>" + '{0:.2f}'.format(res[3]) + "</td></tr>"
+
+
 
 HTML += "</table>"
 HTML += "</p></body></html>"
 
 #log(TEXT)
 #log(HTML)
-sendMail(FROM,TO,SUBJECT,TEXT,HTML,SERVER)
+sendMail(FROM,TO,SUBJECT,HTML,SERVER)
 log("Email Sent To: " + ", ".join(TO))
