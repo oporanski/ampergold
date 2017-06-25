@@ -11,8 +11,8 @@ from datetime import datetime
 
 #######GLOBALS########################################################################
 FROM = "ampergold@starelamy.org"
-#TO = ["oporanski@gmail.com", "marcin.opinc@gmail.com"]
-TO = ["oporanski@gmail.com"]
+TO = ["oporanski@gmail.com", "marcin.opinc@gmail.com"]
+#TO = ["oporanski@gmail.com"]
 SUBJECT = "Average number of users Poloniex"
 SERVER = "localhost"
 DEBUG = True
@@ -132,11 +132,6 @@ log("Daily[%]: " + d_cs)
 
 
 #Create the body of the message (a plain-text and an HTML version).
-#TEXT = "Poloniex Users:\n Last Hour:" + ahu + \
-#    "\n Last day:" + adu + \
-#    "\n 2 days ago:" + a2du + \
-#    "\nChanges in number of users on Poloniex\n Houerly[%]: "+ h_cs+" \n Daily[%]: " + d_cs
-
 HTML = "<html><head><style>table {border-collapse: collapse;} table, th, td {border: 1px solid black;}</style></head><body>" + \
        "<p>Changes in number of users on Poloniex:<br><ul>" + \
        "<li>Houerly[%]: "+ h_cs+"</li><li> Daily[%]: " + d_cs + \
@@ -196,23 +191,17 @@ HTML += """<p>Poloniex Markets:<br>
             <td>Percent Change</td>
             <td>Base Volume</td>
             <td>Quote Volume</td>"""
-#TEXT = "Poloniex Markets:\n Market, \tLast, \tPrice, \tPercent Change, \tBase Volume, \tQuote Volume\n"
 
 markets = ["USDT_BTC", "BTC_PASC", "BTC_XMR", "BTC_ETH", "BTC_ETC", "BTC_VTC", "BTC_LTC", "BTC_DASH"]
 for market in markets: 
     sql_query = "SELECT Last, PercentChange, BaseVolume, QuoteVolume FROM " + market + " ORDER BY id DESC LIMIT 1"
     res = get_market(sql_query)
-    #TEXT += market + ": \t" + '{0:.6f}'.format(res[0]) + ", \t" + '{0:.2f}'.format(res[1]) + ", \t" \
-    #     + '{0:.2f}'.format(res[2]) + ", \t" + '{0:.2f}'.format(res[3]) + "\n"
     HTML += "<tr><td>" + market + "</td><td>" + '{0:.6f}'.format(res[0]) + "</td><td>" + '{0:.2f}'.format(res[1]) \
          + "</td><td>" + '{0:.2f}'.format(res[2]) + "</td><td>" + '{0:.2f}'.format(res[3]) + "</td></tr>"
-
-
 
 HTML += "</table>"
 HTML += "</p></body></html>"
 
-#log(TEXT)
 #log(HTML)
 sendMail(FROM,TO,SUBJECT,HTML,SERVER)
 log("Email Sent To: " + ", ".join(TO))
