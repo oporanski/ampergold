@@ -37,7 +37,7 @@ def get_market(sqlq):
     return ret
 
 
-def get_average_last_hour(sqlq):
+def get_average_users(sqlq):
     conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
     #log(sqlq)
     x = conn.cursor()
@@ -56,24 +56,24 @@ def get_average_last_hour(sqlq):
     conn.close()
     return avg_users
 
-def get_average_last_hour(sqlq):
-    conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
-    #log(sqlq)
-    x = conn.cursor()
-    try:
-	x.execute(sqlq)
-	rows = x.fetchall()
-    except:
-	conn.rollback()
-    #log("Number of records: " + str(len(rows)))
-    avg_users = 0
-    for row in rows:
-	#log("Value:" + row[0])
-	avg_users += int(row[0])
-    avg_users = avg_users/len(rows)
-    #log ("AVG:" + str(avg_users))
-    conn.close()
-    return avg_users
+#def get_average_last_hour(sqlq):
+#    conn = MySQLdb.connect(host="localhost",user="root",passwd="PKjsizw02k",db="poloniex")
+#    #log(sqlq)
+#    x = conn.cursor()
+#    try:
+#	x.execute(sqlq)
+#	rows = x.fetchall()
+#    except:
+#	conn.rollback()
+#    #log("Number of records: " + str(len(rows)))
+#    avg_users = 0
+#    for row in rows:
+#	#log("Value:" + row[0])
+#	avg_users += int(row[0])
+#    avg_users = avg_users/len(rows)
+#    #log ("AVG:" + str(avg_users))
+#    conn.close()
+#    return avg_users
 
 
 #######HELPERS##########
@@ -104,22 +104,33 @@ def log(s):
 log("**********************************************************")
 #get number of users avarage last hour 
 sql_query = "SELECT `Number_Of_Users` FROM `Users_Online` WHERE `Time_Stamp` >= NOW() - INTERVAL 1 HOUR"
-avg_hour_users = get_average_last_hour(sql_query)
-log('Average last hour: '+ str(avg_hour_users))
+avg_hour_users = get_average_users(sql_query)
+#log('Average last hour: '+ str(avg_hour_users))
 
 #get number of users avarage last 24 hour 
 sql_query = "SELECT `Number_Of_Users` FROM `Users_Online` WHERE `Time_Stamp` >= NOW() - INTERVAL 1 DAY"
-avg_day_users = get_average_last_hour(sql_query)
-log('Average last 24 hour: '+ str(avg_day_users))
+avg_day_users = get_average_users(sql_query)
+#log('Average last 24 hour: '+ str(avg_day_users))
 
 #get number of users avarage 2 days ago hour 
 sql_query = "SELECT `Number_Of_Users` FROM `Users_Online` WHERE `Time_Stamp` >= NOW() - INTERVAL 2 DAY AND `Time_Stamp` <= NOW() - INTERVAL 1 DAY"
-avg_2day_users = get_average_last_hour(sql_query)
-log('Average 2 days ago: '+ str(avg_day_users))
+avg_2day_users = get_average_users(sql_query)
+#log('Average 2 days ago: '+ str(avg_day_users))
+
+#get number of users avarage last week 
+sql_query = "SELECT `Number_Of_Users` FROM `Users_Online` WHERE `Time_Stamp` >= NOW() - INTERVAL 1 WEEK"
+avg_week_users = get_average_users(sql_query)
+#log('Average last week: '+ str(avg_day_users))
+
+#get number of users avarage 2 weeks ago hour 
+sql_query = "SELECT `Number_Of_Users` FROM `Users_Online` WHERE `Time_Stamp` >= NOW() - INTERVAL 2 WEEK AND `Time_Stamp` <= NOW() - INTERVAL 1 WEEK"
+avg_2week_users = get_average_users(sql_query)
+#log('Average 2 weeks ago: '+ str(avg_day_users))
 
 #count average Houerly and Daily
 h_c = float(avg_hour_users)/float(avg_day_users)*100
 d_c = float(avg_day_users)/float(avg_2day_users)*100
+w_c = float(avg_week_users)/float(avg_2week_users)*100
 
 #convert to strings for mail 
 ahu = str("%.0f" % round(avg_hour_users,0))
@@ -127,15 +138,17 @@ adu = str("%.0f" % round(avg_day_users,0))
 a2du = str("%.0f" % round(avg_2day_users,0))
 h_cs = str("%.2f" % round(h_c,2))
 d_cs = str("%.2f" % round(d_c,2))
+w_cs = str("%.2f" % round(w_c,2))
 log("Houerly[%]: " + h_cs)
 log("Daily[%]: " + d_cs)
+log("Weekly[%]: " + w_cs)
 
 
 #Create the body of the message (a plain-text and an HTML version).
 HTML = "<html><head><style>table {border-collapse: collapse;} table, th, td {border: 1px solid black;}</style></head><body>" + \
        "<p>Changes in number of users on Poloniex:<br><ul>" + \
-       "<li>Houerly[%]: "+ h_cs+"</li><li> Daily[%]: " + d_cs + \
-       "</li></ul></p>"
+       "<li>Houerly[%]: " + h_cs + "</li><li> Daily[%]: " + d_cs + \
+       "</li><li> Weekly[%]: " + w_cs + "</li></ul></p>"
 
 ###############################################################
 #TOP RISE and DROPS
@@ -156,6 +169,12 @@ for market in markets:
     data_now = get_market(sql_query)
     sql_query = "SELECT Last, BaseVolume, QuoteVolume FROM " + market + " WHERE TimeStamp >= NOW() - INTERVAL 1 DAY ORDER BY id ASC LIMIT 1"
     data_24h = get_market(sql_query)
+    #print(market)
+    #print(data_now)
+    #print(data_24h)
+    #if any 0 value then skip othervise we will get division by 0
+    if(0 in data_now):
+        continue
     delta_price = (data_now[0] - data_24h[0])/data_now[0]*100
     delta_base_volume = (data_now[1] - data_24h[1])/data_now[1]*100
     delta_quote_volume = (data_now[2] - data_24h[2])/data_now[0]*100
