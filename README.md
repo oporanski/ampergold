@@ -1,0 +1,3 @@
+# ampergold
+
+Dirty python tests 
